@@ -1,0 +1,20 @@
+{
+  "name": "barrier-free-sample",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "data:buildings": "node scripts/build-buildings.mjs",
+    "data:merge": "node scripts/merge-geojson.mjs",
+    "data:all": "npm run data:buildings && npm run data:merge"
+  },
+  "devDependencies": {
+    "@types/papaparse": "^5.3.15",
+    "papaparse": "^5.5.2",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.10"
+  }
+}

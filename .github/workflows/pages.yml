@@ -1,0 +1,62 @@
+name: Build and deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci || npm install
+
+      # 저장소가 USERNAME.github.io 이면 사이트 루트가 / (user pages), 아니면 /저장소이름/ (project pages)
+      - name: Build
+        env:
+          VITE_NAVER_MAP_CLIENT_ID: ${{ secrets.VITE_NAVER_MAP_CLIENT_ID }}
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          NAME="${{ github.event.repository.name }}"
+          if [ "$NAME" = "${OWNER}.github.io" ]; then
+            export VITE_BASE_URL=/
+          else
+            export VITE_BASE_URL="/${NAME}/"
+          fi
+          echo "VITE_BASE_URL=$VITE_BASE_URL"
+          npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

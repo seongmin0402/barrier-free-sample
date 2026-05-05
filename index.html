@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>공주대 베리어프리 샘플 지도</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <h1>베리어프리 캠퍼스 샘플</h1>
+        <p class="hint">
+          건물 마커를 눌러 상세정보 · 길찾기는 출발/도착 모드를 선택한 뒤 지도를 클릭하세요.
+        </p>
+      </header>
+      <div class="toolbar">
+        <div class="tool-group">
+          <label>길찾기</label>
+          <button type="button" id="btn-mode-none" class="active">끄기</button>
+          <button type="button" id="btn-mode-from">출발 찍기</button>
+          <button type="button" id="btn-mode-to">도착 찍기</button>
+          <button type="button" id="btn-route-clear">경로 지우기</button>
+        </div>
+        <div class="tool-group">
+          <label>레이어</label>
+          <label><input type="checkbox" id="chk-network" /> 보행 네트워크</label>
+          <label><input type="checkbox" id="chk-entrances" /> 출입구</label>
+          <label><input type="checkbox" id="chk-ev" /> 엘리베이터</label>
+          <label class="nowrap"
+            ><input type="checkbox" id="chk-wheelchair" /> 계단·고페널티 구간 제외</label
+          >
+        </div>
+        <div class="tool-group">
+          <button type="button" id="btn-voice" disabled>음성 안내 시작</button>
+        </div>
+      </div>
+      <div id="map"></div>
+      <aside id="side-panel" class="side-panel hidden" aria-live="polite">
+        <button type="button" id="panel-close" class="panel-close" aria-label="닫기">×</button>
+        <div id="panel-body"></div>
+      </aside>
+      <div id="route-summary" class="route-summary hidden"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
