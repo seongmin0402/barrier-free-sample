@@ -40,15 +40,42 @@
             ><input type="checkbox" id="chk-wheelchair" /> 계단·고페널티 구간 제외</label
           >
         </div>
+        <div class="tool-group driving-tools">
+          <label>차량 (네이버 길찾기 API)</label>
+          <label class="nowrap"
+            ><input type="checkbox" id="chk-driving" disabled /> 도로 경로 표시</label
+          >
+          <select id="sel-driving-option" disabled aria-label="차량 탐색 옵션">
+            <option value="traoptimal">실시간 최적</option>
+            <option value="trafast">빠른길</option>
+            <option value="tracomfort">편한길</option>
+            <option value="traavoidtoll">무료 우선</option>
+            <option value="traavoidcaronly">자동차전용도로 회피</option>
+          </select>
+        </div>
         <div class="tool-group">
-          <button type="button" id="btn-voice" disabled>음성 안내 시작</button>
+          <button type="button" id="btn-voice" disabled>길안내</button>
         </div>
       </div>
       <div id="map"></div>
+      <div id="nav-panel" class="nav-panel hidden" aria-live="polite">
+        <div class="nav-panel-inner">
+          <div class="nav-panel-head">
+            <span class="nav-panel-badge">길안내</span>
+            <button type="button" id="btn-nav-stop" class="nav-stop-btn">종료</button>
+          </div>
+          <p class="nav-next-label">다음 안내</p>
+          <p id="nav-next-text" class="nav-next-text">—</p>
+          <p class="nav-meta">
+            목적지까지 약 <strong id="nav-remain">—</strong>
+          </p>
+        </div>
+      </div>
       <aside id="side-panel" class="side-panel hidden" aria-live="polite">
         <button type="button" id="panel-close" class="panel-close" aria-label="닫기">×</button>
         <div id="panel-body"></div>
       </aside>
+      <div id="driving-status" class="driving-status hidden" role="status"></div>
       <div id="route-summary" class="route-summary hidden"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>

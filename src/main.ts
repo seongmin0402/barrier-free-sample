@@ -14,7 +14,13 @@ import {
   type RoutingGraph,
 } from './routing/graph';
 import { dijkstraGraph, reconstructPath } from './routing/dijkstra';
-import { buildVoiceScript, speakLines, stopSpeaking } from './voice';
+import { buildTurnSegments, stopSpeaking } from './voice';
+import {
+  isNavigationActive,
+  startLiveNavigation,
+  stopLiveNavigation,
+} from './navigation';
+import { fetchDrivingRouteJson, pickDrivingPolyline } from './driving-api';
 
 const CENTER = { lat: 36.4692, lng: 127.141 };
 const SNAP_MAX_M = 120;
@@ -41,6 +47,7 @@ type RouteMode = 'none' | 'from' | 'to';
 
 let map: naver.maps.Map;
 let routePoly: naver.maps.Polyline | null = null;
+let drivingPoly: naver.maps.Polyline | null = null;
 let networkLines: naver.maps.Polyline[] = [];
 let buildingMarkers: naver.maps.Marker[] = [];
 let entranceMarkers: naver.maps.Marker[] = [];
@@ -172,8 +179,107 @@ function onMapClick(e: unknown): void {
   tryComputeRoute();
 }
 
+function syncVoiceButtonAfterNav(): void {
+  const voiceBtn = document.getElementById('btn-voice') as HTMLButtonElement;
+  voiceBtn.textContent = '길안내';
+  voiceBtn.disabled = lastPathKeys.length < 2;
+}
+
+function setDrivingControlsEnabled(on: boolean): void {
+  const chk = document.getElementById('chk-driving') as HTMLInputElement;
+  const sel = document.getElementById('sel-driving-option') as HTMLSelectElement;
+  if (chk) {
+    chk.disabled = !on;
+    if (!on) chk.checked = false;
+  }
+  if (sel) sel.disabled = !on;
+}
+
+function clearDrivingOverlay(): void {
+  drivingPoly?.setMap(null);
+  drivingPoly = null;
+  const st = document.getElementById('driving-status');
+  if (st) {
+    st.classList.add('hidden');
+    st.innerHTML = '';
+    delete st.dataset.error;
+  }
+}
+
+function setDrivingStatus(html: string, isError: boolean): void {
+  const st = document.getElementById('driving-status');
+  if (!st) return;
+  st.classList.remove('hidden');
+  st.innerHTML = html;
+  if (isError) st.dataset.error = '1';
+  else delete st.dataset.error;
+}
+
+async function refreshDrivingRoute(): Promise<void> {
+  const chk = document.getElementById('chk-driving') as HTMLInputElement;
+  const sel = document.getElementById('sel-driving-option') as HTMLSelectElement;
+  clearDrivingOverlay();
+  if (!chk?.checked || !fromPt || !toPt) return;
+
+  const start = `${fromPt.lng()},${fromPt.lat()}`;
+  const goal = `${toPt.lng()},${toPt.lat()}`;
+  setDrivingStatus('차량 도로 경로를 불러오는 중…', false);
+
+  try {
+    const raw = (await fetchDrivingRouteJson({
+      start,
+      goal,
+      option: sel?.value || 'traoptimal',
+    })) as { code?: number; message?: string; messge?: string };
+    if (raw.code !== 0) {
+      const apiMsg = raw.message ?? raw.messge;
+      setDrivingStatus(
+        apiMsg ?? `탐색 실패 (코드 ${String(raw.code)})`,
+        true,
+      );
+      return;
+    }
+    const picked = pickDrivingPolyline(raw);
+    if (!picked?.path.length) {
+      setDrivingStatus('경로 좌표가 없습니다.', true);
+      return;
+    }
+    drivingPoly = new naver.maps.Polyline({
+      map,
+      path: picked.path,
+      strokeWeight: 5,
+      strokeColor: '#1565c0',
+      strokeOpacity: 0.85,
+      strokeStyle: 'solid',
+      zIndex: 45,
+    });
+    const s = picked.summary;
+    const mins =
+      s && Number.isFinite(s.duration)
+        ? Math.max(1, Math.round(s.duration / 60000))
+        : null;
+    const distStr =
+      s && Number.isFinite(s.distance)
+        ? s.distance >= 1000
+          ? `${(s.distance / 1000).toFixed(1)} km`
+          : `${Math.round(s.distance)} m`
+        : '—';
+    setDrivingStatus(
+      `<strong>네이버 차량 경로</strong> (${picked.routeKey}) · 거리 ${distStr}${
+        mins != null ? ` · 약 ${mins}분` : ''
+      } · 통행료 ${s != null && Number.isFinite(s.tollFare) ? `${s.tollFare.toLocaleString('ko-KR')}원` : '—'}`,
+      false,
+    );
+  } catch (e) {
+    setDrivingStatus(String(e), true);
+  }
+}
+
 function tryComputeRoute(): void {
   if (!routingGraph || !fromPt || !toPt) return;
+
+  if (isNavigationActive()) stopLiveNavigation(false);
+  clearDrivingOverlay();
 
   const fromKey = nearestNodeKey(
     routingGraph,
@@ -206,6 +312,7 @@ function tryComputeRoute(): void {
     summaryEl!.textContent =
       '선택한 출발·도착 사이에 보행 네트워크 경로를 찾지 못했습니다. 다른 지점을 찍거나 계단 제외 옵션을 바꿔 보세요.';
     voiceBtn.disabled = true;
+    setDrivingControlsEnabled(false);
     lastPathKeys = [];
     lastEdgeTo = null;
     if (routePoly) routePoly.setMap(null);
@@ -242,10 +349,16 @@ function tryComputeRoute(): void {
     주의·경사 구간(caution) 약 ${sum.caution.toFixed(0)} m · 어려움(hard) 약 ${sum.hard.toFixed(0)} m
   `;
   voiceBtn.disabled = false;
+  setDrivingControlsEnabled(true);
+  const drivingChk = document.getElementById('chk-driving') as HTMLInputElement;
+  if (drivingChk?.checked) void refreshDrivingRoute();
 }
 
 function clearRoute(): void {
   stopSpeaking();
+  stopLiveNavigation(false);
+  clearDrivingOverlay();
+  setDrivingControlsEnabled(false);
   fromPt = null;
   toPt = null;
   lastPathKeys = [];
@@ -430,10 +543,29 @@ async function bootstrap(): Promise<void> {
     tryComputeRoute();
   });
 
+  document.getElementById('chk-driving')?.addEventListener('change', () => {
+    void refreshDrivingRoute();
+  });
+  document.getElementById('sel-driving-option')?.addEventListener('change', () => {
+    const chk = document.getElementById('chk-driving') as HTMLInputElement;
+    if (chk?.checked) void refreshDrivingRoute();
+  });
+
   document.getElementById('btn-voice')?.addEventListener('click', () => {
-    if (!lastEdgeTo || lastPathKeys.length < 2) return;
-    const lines = buildVoiceScript(lastPathKeys, lastEdgeTo);
-    speakLines(lines);
+    if (isNavigationActive()) {
+      stopLiveNavigation(true);
+      return;
+    }
+    if (!routingGraph || !lastEdgeTo || lastPathKeys.length < 2) return;
+    const pathLls = keysToLatLngPath(lastPathKeys, routingGraph);
+    const segments = buildTurnSegments(lastPathKeys, lastEdgeTo);
+    startLiveNavigation(map, pathLls, segments, {
+      onStop: syncVoiceButtonAfterNav,
+    });
+  });
+
+  document.getElementById('btn-nav-stop')?.addEventListener('click', () => {
+    stopLiveNavigation(true);
   });
 
   window.addEventListener('beforeunload', () => stopSpeaking());
