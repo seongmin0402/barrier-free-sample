@@ -8,13 +8,21 @@ declare namespace naver.maps {
     ): void;
   }
   class Map {
-    constructor(el: HTMLElement, opts: MapOptions);
+    constructor(el: HTMLElement | string, opts: MapOptions);
     setCenter(latlng: LatLng): void;
     setZoom(z: number): void;
     getCenter(): LatLng;
     getZoom(): number;
     panTo(latlng: LatLng): void;
+    getMapTypeId(): unknown;
+    setMapTypeId(type: unknown): void;
   }
+  const MapTypeId: {
+    NORMAL: unknown;
+    TERRAIN: unknown;
+    SATELLITE: unknown;
+    HYBRID: unknown;
+  };
   class LatLng {
     constructor(lat: number, lng: number);
     lat(): number;
@@ -36,6 +44,10 @@ declare namespace naver.maps {
     zoom: number;
     mapTypeControl?: boolean;
     zoomControl?: boolean;
+    scaleControl?: boolean;
+    logoControl?: boolean;
+    mapDataControl?: boolean;
+    minZoom?: number;
   }
   interface MarkerOptions {
     position: LatLng | LatLngLiteral;

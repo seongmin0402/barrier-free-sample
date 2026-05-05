@@ -85,18 +85,44 @@ function iconHtml(inner: string, cls: string): string {
   return `<div class="bf-marker ${cls}">${inner}</div>`;
 }
 
-function initMap(): void {
-  const el = document.getElementById('map');
-  if (!el) throw new Error('#map missing');
+function wireMapTypeButtons(): void {
+  const wrap = document.querySelector('.buttons.map-type-buttons');
+  if (!wrap) return;
 
-  map = new naver.maps.Map(el, {
+  const btns = wrap.querySelectorAll<HTMLInputElement>('input[type="button"]');
+  const typeById = naver.maps.MapTypeId as Record<string, unknown>;
+
+  btns.forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const mapTypeId = (e.currentTarget as HTMLInputElement).id;
+      const nextType = typeById[mapTypeId];
+      if (nextType === undefined) return;
+
+      if (map.getMapTypeId() !== nextType) {
+        map.setMapTypeId(nextType);
+        btns.forEach((b) => b.classList.remove('control-on'));
+        (e.currentTarget as HTMLInputElement).classList.add('control-on');
+      }
+    });
+  });
+}
+
+function initMap(): void {
+  if (!document.getElementById('map')) throw new Error('#map missing');
+
+  map = new naver.maps.Map('map', {
     center: new naver.maps.LatLng(CENTER.lat, CENTER.lng),
     zoom: 16,
+    scaleControl: false,
+    logoControl: false,
+    mapDataControl: false,
     zoomControl: true,
-    mapTypeControl: true,
+    minZoom: 6,
   });
 
   naver.maps.Event.addListener(map, 'click', onMapClick);
+  wireMapTypeButtons();
 }
 
 function onMapClick(e: unknown): void {

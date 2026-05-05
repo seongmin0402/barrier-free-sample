@@ -89,6 +89,31 @@ body {
   border-color: #0d47a1;
 }
 
+.buttons.map-type-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.buttons.map-type-buttons input[type='button'] {
+  padding: 6px 12px;
+  border: 1px solid #90a4ae;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.buttons.map-type-buttons input[type='button']:hover {
+  background: #eceff1;
+}
+
+.buttons.map-type-buttons input[type='button'].control-on {
+  background: #1565c0;
+  color: #fff;
+  border-color: #0d47a1;
+}
+
 #map {
   flex: 1;
   min-height: 320px;

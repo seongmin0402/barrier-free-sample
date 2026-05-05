@@ -15,7 +15,8 @@ export function loadNaverMapScript(clientId: string): Promise<void> {
     const s = document.createElement('script');
     s.dataset.naverMap = '1';
     s.async = true;
-    s.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${encodeURIComponent(clientId)}`;
+    // 신규 발급 키는 ncpKeyId + oapi 도메인 사용 (구형 ncpClientId/openapi 조합은 일부 환경에서 차단될 수 있음)
+    s.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}`;
     s.onload = () => resolve();
     s.onerror = () => reject(new Error('Failed to load Naver Maps script'));
     document.head.appendChild(s);
